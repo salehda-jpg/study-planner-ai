@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { BookOpenCheck, Plus } from "lucide-react";
+import { BookOpenCheck, Plus, Search, X } from "lucide-react";
 import { useTasks } from "@/hooks/use-tasks";
 import { useToday } from "@/hooks/use-today";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +20,8 @@ export default function Planner() {
 
   const [status, setStatus] = useState<StatusFilter>("all");
   const [course, setCourse] = useState("");
+  const [search, setSearch] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const [deleting, setDeleting] = useState<Task | null>(null);
@@ -39,20 +41,22 @@ export default function Planner() {
   }, [tasks, today]);
 
   const visible = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase("he");
     const list = tasks.filter(
       (t) =>
         (status === "all" || (status === "pending" ? !t.completed : t.completed)) &&
-        (!effectiveCourse || t.course === effectiveCourse),
+        (!effectiveCourse || t.course === effectiveCourse) &&
+        (!query || t.title.toLocaleLowerCase("he").includes(query) || t.course.toLocaleLowerCase("he").includes(query)),
     );
     return list.sort((a, b) => {
       if (a.completed !== b.completed) return a.completed ? 1 : -1;
       if (!a.completed) return a.dueDate.localeCompare(b.dueDate) || a.createdAt - b.createdAt;
       return b.dueDate.localeCompare(a.dueDate) || a.createdAt - b.createdAt;
     });
-  }, [tasks, status, effectiveCourse]);
+  }, [tasks, status, effectiveCourse, search]);
 
-  const filtersActive = status !== "all" || !!effectiveCourse;
-  const resetFilters = () => { setStatus("all"); setCourse(""); };
+  const filtersActive = status !== "all" || !!effectiveCourse || !!search.trim();
+  const resetFilters = () => { setStatus("all"); setCourse(""); setSearch(""); };
 
   const openAdd = () => { setEditing(null); setFormOpen(true); };
   const openEdit = (t: Task) => { setEditing(t); setFormOpen(true); };
@@ -169,6 +173,32 @@ export default function Planner() {
             >
               <Plus className="h-5 w-5" aria-hidden />
               משימה חדשה
+            </button>
+          </div>
+
+          <div className="mt-5 flex items-center gap-2 rounded-2xl border bg-card/70 p-3 backdrop-blur-sm" role="search" aria-label="חיפוש משימות">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+              <input
+                ref={searchRef}
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="חיפוש לפי משימה או קורס"
+                aria-label="חיפוש לפי משימה או קורס"
+                className="min-h-12 w-full rounded-xl border bg-card pe-3 ps-10 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:border-primary focus:ring-4 focus:ring-primary/15"
+                data-testid="input-task-search"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => { setSearch(""); searchRef.current?.focus(); }}
+              disabled={!search}
+              className="inline-flex min-h-12 shrink-0 items-center justify-center gap-1 rounded-xl px-3 text-sm font-semibold text-primary transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/25 disabled:cursor-default disabled:opacity-40"
+              data-testid="button-clear-search"
+            >
+              <X className="h-4 w-4" aria-hidden />
+              ניקוי חיפוש
             </button>
           </div>
 
